@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/list_model.dart';
 import '../services/list_storage_service.dart';
+import '../providers/history_provider.dart';
 
 class ListProvider extends ChangeNotifier {
   final ListStorageService _storageService = ListStorageService();
@@ -54,7 +55,7 @@ class ListProvider extends ChangeNotifier {
   }
 
   // 随机选择列表项
-  Future<void> getRandomListItem() async {
+  Future<void> getRandomListItem(HistoryProvider? historyProvider) async {
     if (_selectedList == null || _selectedList!.items.isEmpty) {
       return;
     }
@@ -74,6 +75,15 @@ class ListProvider extends ChangeNotifier {
       _selectedItem = randomItem;
       _isChoosing = true;
       notifyListeners();
+      
+      // 添加历史记录
+      if (historyProvider != null) {
+        historyProvider.addListHistoryRecord(
+          listId: _selectedList!.id,
+          listName: _selectedList!.name,
+          result: randomItem.text,
+        );
+      }
     }
   }
 
@@ -85,11 +95,11 @@ class ListProvider extends ChangeNotifier {
   }
 
   // 切换选择状态
-  void toggleSelection() {
+  void toggleSelection({HistoryProvider? historyProvider}) {
     if (_isChoosing) {
       resetSelection();
     } else {
-      getRandomListItem();
+      getRandomListItem(historyProvider);
     }
   }
 

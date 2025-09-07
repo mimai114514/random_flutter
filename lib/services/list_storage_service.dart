@@ -70,7 +70,7 @@ class ListStorageService {
       final index = lists.indexWhere((list) => list.id == listId);
 
       if (index != -1) {
-        lists[index].incrementUsage();
+        lists[index] = lists[index].incrementUsage();
         return await saveLists(lists);
       }
       return false;
@@ -92,7 +92,7 @@ class ListStorageService {
         );
 
         if (itemIndex != -1) {
-          lists[listIndex].items[itemIndex].incrementUsage();
+          lists[listIndex].items[itemIndex] = lists[listIndex].items[itemIndex].incrementUsage();
           return await saveLists(lists);
         }
       }

@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
 import 'providers/list_provider.dart';
+import 'providers/history_provider.dart';
 import 'list_mode_page.dart';
+import 'history_page.dart';
 
 class NavigationBase extends StatefulWidget {
   @override
@@ -62,6 +64,16 @@ class _NavigationBaseState extends State<NavigationBase> {
   }
 
   void _confirm() {
+    // 添加历史记录
+    if (_chosenNumber != null) {
+      final historyProvider = Provider.of<HistoryProvider>(context, listen: false);
+      historyProvider.addNumberHistoryRecord(
+        minValue: int.parse(_minController.text),
+        maxValue: int.parse(_maxController.text),
+        result: _chosenNumber.toString(),
+      );
+    }
+    
     setState(() {
       _isChoosing = false;
     });
@@ -86,6 +98,7 @@ class _NavigationBaseState extends State<NavigationBase> {
   @override
   Widget build(BuildContext context) {
     final listProvider = Provider.of<ListProvider>(context);
+    final historyProvider = Provider.of<HistoryProvider>(context, listen: false);
     
     Widget page;
     if (_selectedIndex == 0) {
@@ -101,9 +114,12 @@ class _NavigationBaseState extends State<NavigationBase> {
         onButtonPressed: _isChoosing ? _confirm : _random,
         // 列表模式属性
         listModePage: ListModePage(),
-        onListButtonPressed: () => listProvider.toggleSelection(),
+        onListButtonPressed: () => listProvider.toggleSelection(historyProvider: historyProvider),
       );
     } else if (_selectedIndex == 1) {
+      // 历史记录页面
+      page = const HistoryPage();
+    } else if (_selectedIndex == 2) {
       // 设置页面
       page = SettingsPage();
     } else {
@@ -117,11 +133,15 @@ class _NavigationBaseState extends State<NavigationBase> {
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home),
-            label: 'Home',
+            label: '主页',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            label: '历史',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings),
-            label: 'Settings',
+            label: '设置',
           ),
         ],
         selectedIndex: _selectedIndex,

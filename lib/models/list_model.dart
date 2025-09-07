@@ -117,6 +117,12 @@ class RandomList {
   ListItem? getRandomItem() {
     if (items.isEmpty) return null;
     items.shuffle();
-    return items.first;
+    final selectedItem = items.first;
+    // 更新项目使用次数
+    final itemIndex = items.indexWhere((item) => item.id == selectedItem.id);
+    if (itemIndex != -1) {
+      items[itemIndex] = items[itemIndex].incrementUsage();
+    }
+    return selectedItem;
   }
 }

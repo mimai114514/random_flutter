@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'navigation_base.dart';
 import 'settings_page.dart';
 import 'providers/list_provider.dart';
+import 'providers/history_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,8 +14,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ListProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ListProvider()),
+        ChangeNotifierProvider(create: (context) => HistoryProvider()),
+      ],
       child: MaterialApp(
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlueAccent),
