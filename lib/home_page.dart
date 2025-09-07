@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'number_mode_page.dart';
 import 'list_mode_page.dart';
+import 'providers/list_provider.dart';
 import 'models/list_model.dart';
 
 class HomePage extends StatefulWidget {
@@ -13,13 +15,8 @@ class HomePage extends StatefulWidget {
   final Function(String) onMaxChanged;
   final VoidCallback onButtonPressed;
   
-  // 列表模式属性
-  final List<RandomList> lists;
-  final RandomList? selectedList;
-  final ListItem? selectedItem;
-  final bool listIsChoosing;
-  final bool listIsLoading;
-  final Function(RandomList) onListSelected;
+  // 列表模式属性 - 简化为组件和按钮回调
+  final Widget listModePage;
   final VoidCallback onListButtonPressed;
 
   HomePage({
@@ -32,12 +29,7 @@ class HomePage extends StatefulWidget {
     required this.onMaxChanged,
     required this.onButtonPressed,
     // 列表模式属性
-    required this.lists,
-    required this.selectedList,
-    required this.selectedItem,
-    required this.listIsChoosing,
-    required this.listIsLoading,
-    required this.onListSelected,
+    required this.listModePage,
     required this.onListButtonPressed,
   });
 
@@ -64,6 +56,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final listProvider = Provider.of<ListProvider>(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: Text('Random'),
@@ -99,15 +93,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Center(
-              child: ListModePage(
-                lists: widget.lists,
-                selectedList: widget.selectedList,
-                selectedItem: widget.selectedItem,
-                isChoosing: widget.listIsChoosing,
-                isLoading: widget.listIsLoading,
-                onListSelected: widget.onListSelected,
-                onButtonPressed: widget.onListButtonPressed,
-              ),
+              child: widget.listModePage,
             ),
           ),
         ],
@@ -119,7 +105,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: Icon(
           _currentTabIndex == 0
               ? (widget.isChoosing ? Icons.check : Icons.casino)
-              : (widget.listIsChoosing ? Icons.check : Icons.casino),
+              : (listProvider.isChoosing ? Icons.check : Icons.casino),
                 ),
               ),
     );

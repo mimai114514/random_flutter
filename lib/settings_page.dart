@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pages/list_management_page.dart';
+import 'package:provider/provider.dart';
+import 'providers/list_provider.dart';
 
 class SettingsPage extends StatelessWidget {
   @override

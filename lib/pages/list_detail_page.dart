@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/list_model.dart';
-import '../services/list_storage_service.dart';
+import '../providers/list_provider.dart';
 
 class ListDetailPage extends StatefulWidget {
   final RandomList list;
@@ -14,7 +15,6 @@ class ListDetailPage extends StatefulWidget {
 
 class _ListDetailPageState extends State<ListDetailPage> {
   late RandomList _list;
-  final ListStorageService _storageService = ListStorageService();
 
   @override
   void initState() {
@@ -22,8 +22,9 @@ class _ListDetailPageState extends State<ListDetailPage> {
     _list = widget.list;
   }
 
-  Future<void> _saveList() async {
-    await _storageService.saveList(_list);
+  void _saveList() {
+    // 使用Provider保存列表
+    Provider.of<ListProvider>(context, listen: false).saveList(_list);
   }
 
   void _showEditListDialog() {
@@ -60,7 +61,7 @@ class _ListDetailPageState extends State<ListDetailPage> {
                           _list = updatedList;
                         });
 
-                        await _saveList();
+                        _saveList();
                         Navigator.pop(context);
                       }
                     },
@@ -94,149 +95,138 @@ class _ListDetailPageState extends State<ListDetailPage> {
             false;
 
     if (confirmed) {
-      await _storageService.deleteList(_list.id);
+      // 使用Provider删除列表
+      Provider.of<ListProvider>(context, listen: false).deleteList(_list.id);
       Navigator.pop(context);
     }
   }
 
   void _showAddItemDialog() {
-    final TextEditingController contentController = TextEditingController();
+    final TextEditingController textController = TextEditingController();
 
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text('添加列表项'),
-            content: TextField(
-              controller: contentController,
-              decoration: InputDecoration(
-                labelText: '内容',
-                hintText: '请输入列表项内容',
-              ),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('取消'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (contentController.text.trim().isNotEmpty) {
-                    final newItem = ListItem(
-                      id: Uuid().v4(),
-                      content: contentController.text.trim(),
-                    );
+                title: Text('添加列表项'),
+                content: TextField(
+                  controller: textController,
+                  decoration: InputDecoration(
+                    labelText: '列表项文本',
+                    hintText: '请输入列表项文本',
+                  ),
+                  autofocus: true,
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      if (textController.text.trim().isNotEmpty) {
+                        final newItem = ListItem(
+                          id: Uuid().v4(),
+                          text: textController.text.trim(),
+                        );
 
-                    setState(() {
-                      _list.addItem(newItem);
-                    });
+                        setState(() {
+                          final updatedItems = List<ListItem>.from(_list.items);
+                          updatedItems.add(newItem);
+                          _list = _list.copyWith(items: updatedItems);
+                        });
 
-                    await _saveList();
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text('添加'),
+                        _saveList();
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Text('添加'),
+                  ),
+                ],
               ),
-            ],
-          ),
     );
   }
 
   void _showEditItemDialog(ListItem item) {
-    final TextEditingController contentController = TextEditingController(
-      text: item.content,
+    final TextEditingController textController = TextEditingController(
+      text: item.text,
     );
 
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text('编辑列表项'),
-            content: TextField(
-              controller: contentController,
-              decoration: InputDecoration(
-                labelText: '内容',
-                hintText: '请输入列表项内容',
-              ),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('取消'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (contentController.text.trim().isNotEmpty) {
-                    final updatedItem = item.copyWith(
-                      content: contentController.text.trim(),
-                    );
-
-                    setState(() {
-                      _list.updateItem(updatedItem);
-                    });
-
-                    await _saveList();
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text('保存'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Future<void> _deleteItem(String itemId) async {
-    final confirmed =
-        await showDialog<bool>(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: Text('删除列表项'),
-                content: Text('确定要删除此列表项吗？'),
+                title: Text('编辑列表项'),
+                content: TextField(
+                  controller: textController,
+                  decoration: InputDecoration(
+                    labelText: '列表项文本',
+                    hintText: '请输入列表项文本',
+                  ),
+                  autofocus: true,
+                ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.pop(context),
                     child: Text('取消'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text('删除'),
+                    onPressed: () {
+                      if (textController.text.trim().isNotEmpty) {
+                        final updatedItem = item.copyWith(
+                          text: textController.text.trim(),
+                        );
+
+                        setState(() {
+                          final itemIndex = _list.items.indexWhere(
+                            (i) => i.id == item.id,
+                          );
+                          if (itemIndex != -1) {
+                            final updatedItems = List<ListItem>.from(_list.items);
+                            updatedItems[itemIndex] = updatedItem;
+                            _list = _list.copyWith(items: updatedItems);
+                          }
+                        });
+
+                        _saveList();
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Text('保存'),
                   ),
                 ],
               ),
-        ) ??
-        false;
+    );
+  }
 
-    if (confirmed) {
-      setState(() {
-        _list.removeItem(itemId);
-      });
+  void _deleteItem(ListItem item) {
+    setState(() {
+      final updatedItems = List<ListItem>.from(_list.items);
+      updatedItems.removeWhere((i) => i.id == item.id);
+      _list = _list.copyWith(items: updatedItems);
+    });
 
-      await _saveList();
-    }
+    _saveList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('列表详情-${_list.name}'),
+        title: Text("列表管理 - ${_list.name}"),
         actions: [
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'edit') {
+              if (value == 'edit_list') {
                 _showEditListDialog();
-              } else if (value == 'delete') {
+              } else if (value == 'delete_list') {
                 _deleteList();
               }
             },
-            itemBuilder: (context) => [
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
-                value: 'edit',
+                value: 'edit_list',
                 child: Row(
                   children: [
                     Icon(Icons.edit, size: 20),
@@ -246,7 +236,7 @@ class _ListDetailPageState extends State<ListDetailPage> {
                 ),
               ),
               PopupMenuItem<String>(
-                value: 'delete',
+                value: 'delete_list',
                 child: Row(
                   children: [
                     Icon(Icons.delete, size: 20),
@@ -259,52 +249,50 @@ class _ListDetailPageState extends State<ListDetailPage> {
           ),
         ],
       ),
-      body:
-          _list.items.isEmpty
-              ? Center(child: Text('暂无列表项，点击右下角按钮添加'))
-              : ListView.builder(
-                itemCount: _list.items.length,
-                itemBuilder: (context, index) {
-                  final item = _list.items[index];
-                  return ListTile(
-                    key: ValueKey(item.id),
-                    title: Text(item.content),
-                    subtitle: Text('使用次数: ${item.usageCount}'),
-                    trailing: PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showEditItemDialog(item);
-                        } else if (value == 'delete') {
-                          _deleteItem(item.id);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, size: 20),
-                              SizedBox(width: 8),
-                              Text('编辑'),
-                            ],
-                          ),
+      body: _list.items.isEmpty
+          ? Center(child: Text('暂无列表项，点击右下角按钮添加'))
+          : ListView.builder(
+              itemCount: _list.items.length,
+              itemBuilder: (context, index) {
+                final item = _list.items[index];
+                return ListTile(
+                  title: Text(item.text),
+                  subtitle: Text('使用次数: ${item.usageCount}'),
+                  trailing: PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert),
+                    onSelected: (value) {
+                      if (value == 'edit_item') {
+                        _showEditItemDialog(item);
+                      } else if (value == 'delete_item') {
+                        _deleteItem(item);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'edit_item',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text('编辑'),
+                          ],
                         ),
-                        PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, size: 20),
-                              SizedBox(width: 8),
-                              Text('删除'),
-                            ],
-                          ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete_item',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 20),
+                            SizedBox(width: 8),
+                            Text('删除'),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddItemDialog,
         child: Icon(Icons.add),

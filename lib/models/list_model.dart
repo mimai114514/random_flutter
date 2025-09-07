@@ -1,46 +1,46 @@
 import 'dart:convert';
 
 class ListItem {
-  String id;
-  String content;
-  int usageCount;
+  final String id;
+  final String text;
+  final int usageCount;
 
-  ListItem({required this.id, required this.content, this.usageCount = 0});
+  ListItem({required this.id, required this.text, this.usageCount = 0});
 
   // 从JSON转换为ListItem对象
   factory ListItem.fromJson(Map<String, dynamic> json) {
     return ListItem(
       id: json['id'],
-      content: json['content'],
+      text: json['content'] ?? json['text'],
       usageCount: json['usageCount'] ?? 0,
     );
   }
 
   // 转换为JSON
   Map<String, dynamic> toJson() {
-    return {'id': id, 'content': content, 'usageCount': usageCount};
+    return {'id': id, 'content': text, 'usageCount': usageCount};
   }
 
   // 创建ListItem的副本
-  ListItem copyWith({String? id, String? content, int? usageCount}) {
+  ListItem copyWith({String? id, String? text, int? usageCount}) {
     return ListItem(
       id: id ?? this.id,
-      content: content ?? this.content,
+      text: text ?? this.text,
       usageCount: usageCount ?? this.usageCount,
     );
   }
 
   // 增加使用次数
-  void incrementUsage() {
-    usageCount++;
+  ListItem incrementUsage() {
+    return copyWith(usageCount: usageCount + 1);
   }
 }
 
 class RandomList {
-  String id;
-  String name;
-  List<ListItem> items;
-  int usageCount;
+  final String id;
+  final String name;
+  final List<ListItem> items;
+  final int usageCount;
 
   RandomList({
     required this.id,
@@ -88,8 +88,8 @@ class RandomList {
   }
 
   // 增加使用次数
-  void incrementUsage() {
-    usageCount++;
+  RandomList incrementUsage() {
+    return copyWith(usageCount: usageCount + 1);
   }
 
   // 获取列表项数量

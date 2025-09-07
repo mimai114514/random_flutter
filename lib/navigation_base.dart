@@ -1,41 +1,31 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
-import 'number_mode_page.dart';
+import 'package:provider/provider.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
-import 'models/list_model.dart';
-import 'services/list_storage_service.dart';
+import 'providers/list_provider.dart';
+import 'list_mode_page.dart';
 
 class NavigationBase extends StatefulWidget {
-  const NavigationBase({super.key});
-
   @override
-  State<NavigationBase> createState() => _NavigationBaseState();
+  _NavigationBaseState createState() => _NavigationBaseState();
 }
 
 class _NavigationBaseState extends State<NavigationBase> {
-  var _PageIndex = 0;
-
+  int _selectedIndex = 0;
+  
   // 数字模式状态
-  final _minController = TextEditingController();
-  final _maxController = TextEditingController();
-  var _IsChoosing = false;
-  var _ChosenNumber;
-  var _MinNumber;
-  var _MaxNumber;
-
-  // 列表模式状态
-  final ListStorageService _listStorageService = ListStorageService();
-  List<RandomList> _lists = [];
-  RandomList? _selectedList;
-  ListItem? _selectedItem;
-  bool _listIsChoosing = false;
-  bool _listIsLoading = true;
+  final TextEditingController _minController = TextEditingController(text: '1');
+  final TextEditingController _maxController = TextEditingController(text: '100');
+  bool _isChoosing = false;
+  int? _chosenNumber;
 
   @override
   void initState() {
     super.initState();
-    _loadLists();
+    // 初始化时加载列表数据
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ListProvider>(context, listen: false).loadLists();
+    });
   }
 
   @override
@@ -45,186 +35,100 @@ class _NavigationBaseState extends State<NavigationBase> {
     super.dispose();
   }
 
-  // 列表模式方法
-  Future<void> _loadLists() async {
-    setState(() {
-      _listIsLoading = true;
-    });
-
-    final lists = await _listStorageService.getLists();
-    setState(() {
-      _lists = lists;
-      _listIsLoading = false;
-      // 如果之前选择了列表，尝试找到对应的列表
-      if (_selectedList != null) {
-        _selectedList = lists.firstWhere(
-          (list) => list.id == _selectedList!.id,
-          orElse: () {
-            if (lists.isNotEmpty) {
-              return lists.first;
-            }
-            return lists.first; // 返回第一个列表作为默认值，因为前面已经检查过lists不为空
-          },
-        );
-      } else if (lists.isNotEmpty) {
-        // 默认选中第一个列表
-        _selectedList = lists.first;
-      }
-    });
-  }
-
-  void _selectList(RandomList list) {
-    setState(() {
-      _selectedList = list;
-      _selectedItem = null;
-      _listIsChoosing = false;
-    });
-  }
-
-  Future<void> _getRandomListItem() async {
-    if (_selectedList == null || _selectedList!.items.isEmpty) {
-      _showErrorDialog('当前列表为空，无法抽取项目');
+  // 数字模式方法
+  void _random() {
+    if (_minController.text.isEmpty || _maxController.text.isEmpty) {
+      _showErrorDialog('请输入最小值和最大值');
       return;
     }
 
-    // 更新列表使用次数
-    await _listStorageService.updateListUsage(_selectedList!.id);
+    int? min = int.tryParse(_minController.text);
+    int? max = int.tryParse(_maxController.text);
 
-    // 随机选择一个项目
-    final randomItem = _selectedList!.getRandomItem();
-    if (randomItem != null) {
-      // 更新项目使用次数
-      await _listStorageService.updateListItemUsage(
-        _selectedList!.id,
-        randomItem.id,
-      );
-
-      setState(() {
-        _selectedItem = randomItem;
-        _listIsChoosing = true;
-      });
-    }
-  }
-
-  void _resetListSelection() {
-    setState(() {
-      _listIsChoosing = false;
-      _selectedItem = null;
-    });
-  }
-
-  void _onListButtonPressed() {
-    if (_listIsChoosing) {
-      _resetListSelection();
-    } else {
-      _getRandomListItem();
-    }
-  }
-
-  void random() {
-    if (_MinNumber == null || _MaxNumber == null) {
+    if (min == null || max == null) {
       _showErrorDialog('请输入有效的数字');
       return;
     }
 
-    if (_MinNumber >= _MaxNumber) {
+    if (min >= max) {
       _showErrorDialog('最小值必须小于最大值');
       return;
     }
 
-    final random = Random();
     setState(() {
-      _ChosenNumber = _MinNumber + random.nextInt(_MaxNumber - _MinNumber + 1);
-      _IsChoosing = true;
+      _isChoosing = true;
+      _chosenNumber = min + (DateTime.now().millisecondsSinceEpoch % (max - min + 1));
+    });
+  }
+
+  void _confirm() {
+    setState(() {
+      _isChoosing = false;
     });
   }
 
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('错误'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('确定'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: Text('错误'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('确定'),
+          ),
+        ],
+      ),
     );
-  }
-
-  void confirm() {
-    setState(() {
-      _IsChoosing = false;
-    });
-  }
-
-  void onPressed() {
-    switch (_IsChoosing) {
-      case true:
-        confirm();
-        break;
-      case false:
-        random();
-        break;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final listProvider = Provider.of<ListProvider>(context);
+    
     Widget page;
-    switch (_PageIndex) {
-      case 0:
-        page = HomePage(
-          // 数字模式属性
-          minController: _minController,
-          maxController: _maxController,
-          isChoosing: _IsChoosing,
-          chosenNumber: _ChosenNumber,
-          onMinChanged:
-              (value) => setState(() {
-                _MinNumber = int.tryParse(value);
-              }),
-          onMaxChanged:
-              (value) => setState(() {
-                _MaxNumber = int.tryParse(value);
-              }),
-          onButtonPressed: onPressed,
-          // 列表模式属性
-          lists: _lists,
-          selectedList: _selectedList,
-          selectedItem: _selectedItem,
-          listIsChoosing: _listIsChoosing,
-          listIsLoading: _listIsLoading,
-          onListSelected: _selectList,
-          onListButtonPressed: _onListButtonPressed,
-        );
-        break;
-      case 1:
-        page = SettingsPage();
-        break;
-      default:
-        page = const Center(child: Text('Unknown Page'));
+    if (_selectedIndex == 0) {
+      // 主页
+      page = HomePage(
+        // 数字模式属性
+        minController: _minController,
+        maxController: _maxController,
+        isChoosing: _isChoosing,
+        chosenNumber: _chosenNumber,
+        onMinChanged: (value) {},
+        onMaxChanged: (value) {},
+        onButtonPressed: _isChoosing ? _confirm : _random,
+        // 列表模式属性
+        listModePage: ListModePage(),
+        onListButtonPressed: () => listProvider.toggleSelection(),
+      );
+    } else if (_selectedIndex == 1) {
+      // 设置页面
+      page = SettingsPage();
+    } else {
+      // 未知页面
+      page = Center(child: Text('未知页面'));
     }
 
     return Scaffold(
       body: page,
       bottomNavigationBar: NavigationBar(
-        destinations: const <NavigationDestination>[
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
-        selectedIndex: _PageIndex,
-        onDestinationSelected: (int index) {
-          if (index != _PageIndex) {
-            setState(() {
-              _PageIndex = index;
-            });
-          }
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
         },
       ),
     );
